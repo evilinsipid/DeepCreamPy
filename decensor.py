@@ -1,12 +1,17 @@
-import numpy as np
-from PIL import Image
-import os
+try:
+    import numpy as np
+    from PIL import Image
+    import os
 
-from copy import deepcopy
+    from copy import deepcopy
 
-import config
-from libs.pconv_hybrid_model import PConvUnet
-from libs.utils import *
+    import config
+    from libs.pconv_hybrid_model import PConvUnet
+    from libs.utils import *
+except ImportError as err:
+    print("Error: ", err)
+    print("Could not import modules. Make sure all dependencies are installed.")
+    exit(1)
 
 class Decensor:
 
@@ -68,11 +73,14 @@ class Decensor:
                         print("Check if it exists and is in the PNG or JPG format.")
                 else:
                     self.decensor_image(colored_img, colored_img, file_name)
+            elif not file_name.startswith("."): # warn if not a PNG, but ignore .gitkeep
+                print("--------------------------------------------------------------------------")
+                print("Unsupported file type (not a PNG): {}".format(color_file_path))
         print("--------------------------------------------------------------------------")
 
     #decensors one image at a time
     #TODO: decensor all cropped parts of the same image in a batch (then i need input for colored an array of those images and make additional changes)
-    def decensor_image(self, ori, colored, file_name):
+    def decensor_image(self, ori, colored, file_name=None):
         width, height = ori.size
         #save the alpha channel if the image has an alpha channel
         has_alpha = False
@@ -105,7 +113,7 @@ class Decensor:
         print("Found {region_count} censored regions in this image!".format(region_count = len(regions)))
 
         if len(regions) == 0 and not self.is_mosaic:
-            print("No green regions detected!")
+            print("No green regions detected! Make sure you're using exactly the right color.")
             return
 
         output_img_array = ori_array[0].copy()
@@ -186,13 +194,17 @@ class Decensor:
 
         output_img = Image.fromarray(output_img_array.astype('uint8'))
 
-        #save the decensored image
-        #file_name, _ = os.path.splitext(file_name)
-        save_path = os.path.join(self.args.decensor_output_path, file_name)
-        output_img.save(save_path)
+        if file_name != None:
+            #save the decensored image
+            #file_name, _ = os.path.splitext(file_name)
+            save_path = os.path.join(self.args.decensor_output_path, file_name)
+            output_img.save(save_path)
 
-        print("Decensored image saved to {save_path}!".format(save_path=save_path))
-        return
+            print("Decensored image saved to {save_path}!".format(save_path=save_path))
+            return
+        else:
+            print("Decensored image. Returning it.")
+            return output_img
 
 if __name__ == '__main__':
     decensor = Decensor()
